@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Separator } from "@/components/ui/separator"
-import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Users, Receipt } from 'lucide-react';
+import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Users, Receipt, Divide } from 'lucide-react';
 
 export default function BillSplitter() {
   const [persons, setPersons] = useState([
@@ -423,7 +423,7 @@ export default function BillSplitter() {
                         className="px-2 py-1 border border-gray-600 bg-gray-900 text-blue-400 hover:text-blue-300 hover:bg-gray-700 rounded transition-colors"
                         title="Split evenly among all people"
                       >
-                        <Users size={16} />
+                        <Divide size={16}/>
                       </button>
                     </div>
                   </td>
