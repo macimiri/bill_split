@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Users } from 'lucide-react';
+import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Users, Receipt } from 'lucide-react';
 
 export default function BillSplitter() {
   const [persons, setPersons] = useState([
@@ -249,16 +248,13 @@ export default function BillSplitter() {
     const tip = calculateTipAmount() * ratio;
     
     let summary = billName ? `${billName}\n` : '';
-    summary += `Bill Summary for ${person.name}\n`;
-    summary += `${'='.repeat(60)}\n\n`;
+    summary += `${person.name}\n`;
     summary += `Items:\n`;
     itemsList.forEach(item => {
       summary += `  ${item.name} - ${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio}): ${item.amount}\n`;
     });
-    summary += `\nSubtotal: ${subtotal.toFixed(2)}\n`;
     summary += `Tax: ${tax.toFixed(2)}\n`;
     summary += `Tip: ${tip.toFixed(2)}\n`;
-    summary += `${'='.repeat(60)}\n`;
     summary += `Total: ${total.toFixed(2)}\n`;
     
     navigator.clipboard.writeText(summary);
@@ -501,7 +497,6 @@ export default function BillSplitter() {
                       title="Percentage"
                     >
                       <Percent size={16} />
-                      <span className="text-xs">%</span>
                     </button>
                     <button
                       onClick={() => setTaxType('amount')}
@@ -513,7 +508,6 @@ export default function BillSplitter() {
                       title="Dollar amount"
                     >
                       <DollarSign size={16} />
-                      <span className="text-xs">$</span>
                     </button>
                   </div>
                   <input
@@ -547,7 +541,6 @@ export default function BillSplitter() {
                       title="Percentage"
                     >
                       <Percent size={16} />
-                      <span className="text-xs">%</span>
                     </button>
                     <button
                       onClick={() => setTipType('amount')}
@@ -559,7 +552,6 @@ export default function BillSplitter() {
                       title="Dollar amount"
                     >
                       <DollarSign size={16} />
-                      <span className="text-xs">$</span>
                     </button>
                   </div>
                   <input
