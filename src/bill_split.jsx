@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, Download } from 'lucide-react';
+import { Plus, Trash2, ClipboardCopy } from 'lucide-react';
 
 export default function BillSplitter() {
   const [persons, setPersons] = useState([
@@ -7,19 +7,20 @@ export default function BillSplitter() {
   ]);
   const [items, setItems] = useState([]);
   const [taxType, setTaxType] = useState('percentage');
-  const [taxValue, setTaxValue] = useState(0);
+  const [taxValue, setTaxValue] = useState('');
   const [tipType, setTipType] = useState('percentage');
-  const [tipValue, setTipValue] = useState(0);
+  const [tipValue, setTipValue] = useState('');
   const [focusedCostField, setFocusedCostField] = useState(null);
+  const [toastMessage, setToastMessage] = useState('');
   const personInputRef = useRef(null);
   const itemNameInputRef = useRef(null);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.shiftKey && e.key === 'P') {
+      if (e.shiftKey && e.metaKey && e.key === 'P') {
         e.preventDefault();
         addPerson();
-      } else if (e.shiftKey && e.key === 'I') {
+      } else if (e.shiftKey && e.metaKey && e.key === 'I') {
         e.preventDefault();
         addItem();
       }
@@ -42,6 +43,11 @@ export default function BillSplitter() {
       itemNameInputRef.current.select();
     }
   }, [items.length]);
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
 
   const addPerson = () => {
     const newPerson = { 
@@ -77,7 +83,6 @@ export default function BillSplitter() {
 
   const updateItem = (id, field, value) => {
     if (field === 'cost') {
-      // Store the raw expression
       setItems(items.map(item => 
         item.id === id ? { ...item, costExpression: value, cost: item.cost } : item
       ));
@@ -91,9 +96,11 @@ export default function BillSplitter() {
   const evaluateCostExpression = (id, expression) => {
     try {
       const cleanValue = expression.replace(/\s/g, '');
+      const operators = /[\+\-\*\/]/;
+      const validChars = /^[\d\.\+\-\*\/\(\)]+$/;
       
-      if (/[\+\-\*\/]/.test(cleanValue)) {
-        if (/^[\d\.\+\-\*\/\(\)]+$/.test(cleanValue)) {
+      if (operators.test(cleanValue)) {
+        if (validChars.test(cleanValue)) {
           const result = Function('"use strict"; return (' + cleanValue + ')')();
           if (!isNaN(result) && isFinite(result)) {
             setItems(items.map(item => 
@@ -104,7 +111,6 @@ export default function BillSplitter() {
         }
       }
       
-      // If no operators or invalid, just parse as number
       const numValue = parseFloat(expression);
       if (!isNaN(numValue)) {
         setItems(items.map(item => 
@@ -145,18 +151,20 @@ export default function BillSplitter() {
 
   const calculateTaxAmount = () => {
     const subtotal = calculateSubtotal();
+    const taxVal = parseFloat(taxValue) || 0;
     if (taxType === 'percentage') {
-      return subtotal * (parseFloat(taxValue) / 100);
+      return subtotal * (taxVal / 100);
     }
-    return parseFloat(taxValue || 0);
+    return taxVal;
   };
 
   const calculateTipAmount = () => {
     const subtotal = calculateSubtotal();
+    const tipVal = parseFloat(tipValue) || 0;
     if (tipType === 'percentage') {
-      return subtotal * (parseFloat(tipValue) / 100);
+      return subtotal * (tipVal / 100);
     }
-    return parseFloat(tipValue || 0);
+    return tipVal;
   };
 
   const calculatePersonSubtotal = (personId) => {
@@ -216,16 +224,16 @@ export default function BillSplitter() {
     summary += `${'='.repeat(60)}\n\n`;
     summary += `Items:\n`;
     itemsList.forEach(item => {
-      summary += `  ${item.name} - ${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio}): ${item.amount}\n`;
+      summary += `  ${item.name} - $${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio}): $${item.amount}\n`;
     });
-    summary += `\nSubtotal: ${subtotal.toFixed(2)}\n`;
-    summary += `Tax: ${tax.toFixed(2)}\n`;
-    summary += `Tip: ${tip.toFixed(2)}\n`;
+    summary += `\nSubtotal: $${subtotal.toFixed(2)}\n`;
+    summary += `Tax: $${tax.toFixed(2)}\n`;
+    summary += `Tip: $${tip.toFixed(2)}\n`;
     summary += `${'='.repeat(60)}\n`;
-    summary += `Total: ${total.toFixed(2)}\n`;
+    summary += `Total: $${total.toFixed(2)}\n`;
     
     navigator.clipboard.writeText(summary);
-    alert('Summary copied to clipboard!');
+    showToast(`${person.name}'s summary copied!`);
   };
 
   const exportFullBill = () => {
@@ -234,12 +242,12 @@ export default function BillSplitter() {
     
     summary += `ITEMS:\n`;
     items.forEach(item => {
-      summary += `${item.name} - ${item.cost.toFixed(2)}\n`;
+      summary += `${item.name} - $${item.cost.toFixed(2)}\n`;
       item.splits.forEach(split => {
         const person = persons.find(p => p.id === split.personId);
         const totalRatio = item.splits.reduce((s, sp) => s + sp.ratio, 0);
         const amount = item.cost * split.ratio / totalRatio;
-        summary += `  ${person.name}: ${split.ratio}/${totalRatio} = ${amount.toFixed(2)}\n`;
+        summary += `  ${person.name}: ${split.ratio}/${totalRatio} = $${amount.toFixed(2)}\n`;
       });
       summary += `\n`;
     });
@@ -256,22 +264,22 @@ export default function BillSplitter() {
       const tip = calculateTipAmount() * ratio;
       
       summary += `${person.name}:\n`;
-      summary += `  Subtotal: ${subtotal.toFixed(2)}\n`;
-      summary += `  Tax: ${tax.toFixed(2)}\n`;
-      summary += `  Tip: ${tip.toFixed(2)}\n`;
-      summary += `  Total: ${total.toFixed(2)}\n\n`;
+      summary += `  Subtotal: $${subtotal.toFixed(2)}\n`;
+      summary += `  Tax: $${tax.toFixed(2)}\n`;
+      summary += `  Tip: $${tip.toFixed(2)}\n`;
+      summary += `  Total: $${total.toFixed(2)}\n\n`;
     });
     
     summary += `${'='.repeat(60)}\n`;
     summary += `BILL TOTALS:\n`;
-    summary += `Subtotal: ${calculateSubtotal().toFixed(2)}\n`;
-    summary += `Tax: ${calculateTaxAmount().toFixed(2)}\n`;
-    summary += `Tip: ${calculateTipAmount().toFixed(2)}\n`;
+    summary += `Subtotal: $${calculateSubtotal().toFixed(2)}\n`;
+    summary += `Tax: $${calculateTaxAmount().toFixed(2)}\n`;
+    summary += `Tip: $${calculateTipAmount().toFixed(2)}\n`;
     summary += `${'='.repeat(60)}\n`;
-    summary += `GRAND TOTAL: ${grandTotal.toFixed(2)}\n`;
+    summary += `GRAND TOTAL: $${grandTotal.toFixed(2)}\n`;
     
     navigator.clipboard.writeText(summary);
-    alert('Full bill summary copied to clipboard!');
+    showToast('Full bill summary copied!');
   };
 
   const grandTotal = calculateSubtotal() + calculateTaxAmount() + calculateTipAmount();
@@ -288,10 +296,16 @@ export default function BillSplitter() {
           -moz-appearance: textfield;
         }
       `}</style>
+      
+      {toastMessage && (
+        <div className="fixed top-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-50">
+          {toastMessage}
+        </div>
+      )}
+      
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-100 mb-4 text-center">Bill Splitter</h1>
         
-        {/* Main Table */}
         <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -302,7 +316,7 @@ export default function BillSplitter() {
                     <button
                       onClick={addItem}
                       className="bg-green-600 text-white p-1 rounded hover:bg-green-700"
-                      title="Shift+I"
+                      title="Cmd+Shift+I"
                     >
                       <Plus size={14} />
                     </button>
@@ -333,7 +347,7 @@ export default function BillSplitter() {
                   <button
                     onClick={addPerson}
                     className="bg-blue-600 text-white p-1 rounded hover:bg-blue-700"
-                    title="Shift+P"
+                    title="Cmd+Shift+P"
                   >
                     <Plus size={14} />
                   </button>
@@ -370,8 +384,33 @@ export default function BillSplitter() {
                     <td key={person.id} className="p-2 text-center border-l border-gray-700">
                       <input
                         type="number"
-                        value={getSplitRatio(item.id, person.id)}
+                        value={getSplitRatio(item.id, person.id) || ''}
                         onChange={(e) => updateSplit(item.id, person.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            const currentCell = e.target.closest('td');
+                            const currentRow = currentCell.closest('tr');
+                            const allCells = Array.from(currentRow.querySelectorAll('input[type="number"]'));
+                            const allRows = Array.from(currentRow.parentElement.querySelectorAll('tr'));
+                            const currentCellIndex = allCells.indexOf(e.target);
+                            const currentRowIndex = allRows.indexOf(currentRow);
+                            
+                            if (e.key === 'ArrowRight' && currentCellIndex < allCells.length - 1) {
+                              allCells[currentCellIndex + 1].focus();
+                            } else if (e.key === 'ArrowLeft' && currentCellIndex > 0) {
+                              allCells[currentCellIndex - 1].focus();
+                            } else if (e.key === 'ArrowDown' && currentRowIndex < allRows.length - 1) {
+                              const nextRow = allRows[currentRowIndex + 1];
+                              const nextCells = Array.from(nextRow.querySelectorAll('input[type="number"]'));
+                              if (nextCells[currentCellIndex]) nextCells[currentCellIndex].focus();
+                            } else if (e.key === 'ArrowUp' && currentRowIndex > 0) {
+                              const prevRow = allRows[currentRowIndex - 1];
+                              const prevCells = Array.from(prevRow.querySelectorAll('input[type="number"]'));
+                              if (prevCells[currentCellIndex]) prevCells[currentCellIndex].focus();
+                            }
+                          }
+                        }}
                         className="w-16 px-2 py-1 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm text-center focus:border-blue-500 focus:outline-none mx-auto"
                         step="0.1"
                         min="0"
@@ -392,7 +431,6 @@ export default function BillSplitter() {
           </table>
         </div>
 
-        {/* Tax and Tip Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
             <label className="block text-sm font-medium mb-2 text-gray-300">Tax</label>
@@ -438,7 +476,6 @@ export default function BillSplitter() {
           </div>
         </div>
 
-        {/* Summary Section */}
         <div className="bg-gray-800 rounded-lg shadow-lg p-4 mt-4 border border-gray-700">
           <h2 className="text-xl font-semibold text-gray-100 mb-3">Summary</h2>
           <div className="space-y-3">
@@ -450,7 +487,16 @@ export default function BillSplitter() {
                 
                 return (
                   <div key={person.id} className="p-3 bg-gradient-to-br from-gray-700 to-gray-600 rounded-lg border border-indigo-500">
-                    <h3 className="font-semibold text-base mb-1.5 text-gray-100">{person.name}</h3>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <h3 className="font-semibold text-base text-gray-100">{person.name}</h3>
+                      <button
+                        onClick={() => exportPersonSummary(person.id)}
+                        className="text-indigo-400 hover:text-indigo-300"
+                        title="Copy summary"
+                      >
+                        <ClipboardCopy size={16} />
+                      </button>
+                    </div>
                     <div className="space-y-0.5 text-xs">
                       <div className="flex justify-between text-gray-300">
                         <span>Subtotal:</span>
@@ -473,21 +519,15 @@ export default function BillSplitter() {
                         <span className="text-indigo-400">${total.toFixed(2)}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => exportPersonSummary(person.id)}
-                      className="mt-2 w-full bg-indigo-600 text-white px-2 py-1.5 rounded hover:bg-indigo-700 flex items-center justify-center gap-1.5 text-xs"
-                    >
-                      <Download size={14} /> Export
-                    </button>
                   </div>
                 );
               })}
             </div>
             
-            <div className="p-3 bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg border-2 border-green-500">
-              <div className="space-y-1">
-                <div className="flex justify-between text-base text-gray-100">
-                  <span>Subtotal:</span>
+            <div className="p-4 bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg border-2 border-green-500 max-w-md mx-auto">
+              <div className="space-y-2">
+                <div className="flex justify-between text-lg text-gray-100">
+                  <span className="font-medium">Subtotal:</span>
                   <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-300">
@@ -498,17 +538,17 @@ export default function BillSplitter() {
                   <span>Tip:</span>
                   <span className="font-medium">${calculateTipAmount().toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-xl font-bold pt-1.5 border-t-2 border-green-500">
-                  <span className="text-gray-100">Grand Total:</span>
+                <div className="flex justify-between text-2xl font-bold pt-2 border-t-2 border-green-500">
+                  <span className="text-gray-100">Total:</span>
                   <span className="text-green-400">${grandTotal.toFixed(2)}</span>
                 </div>
+                <button
+                  onClick={exportFullBill}
+                  className="mt-3 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
+                >
+                  <ClipboardCopy size={16} /> Copy Full Bill
+                </button>
               </div>
-              <button
-                onClick={exportFullBill}
-                className="mt-3 w-full bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
-              >
-                <Download size={16} /> Export Full Bill
-              </button>
             </div>
           </div>
         </div>
