@@ -498,7 +498,15 @@ export default function BillSplitter() {
           </div>
 
           <div className="p-4 bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg shadow-lg border-2 border-green-500">
-            <h2 className="text-lg font-semibold text-gray-100 mb-3">Grand Total</h2>
+            <div className="flex items-center justify-between mb-1.5">
+              <h2 className="text-lg font-semibold text-gray-100 mb-3">Grand Total</h2>
+              <button
+                onClick={exportFullBill}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
+              >
+                <ClipboardCopy size={16} />
+              </button>
+            </div>
             <div className="space-y-2">
               <div className="flex justify-between text-base text-gray-100">
                 <span className="font-medium">Subtotal:</span>
@@ -516,12 +524,6 @@ export default function BillSplitter() {
                 <span className="text-gray-100">Total:</span>
                 <span className="text-green-400">${grandTotal.toFixed(2)}</span>
               </div>
-              <button
-                onClick={exportFullBill}
-                className="mt-3 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
-              >
-                <ClipboardCopy size={16} /> Copy Full Bill
-              </button>
             </div>
           </div>
         </div>
@@ -540,7 +542,7 @@ export default function BillSplitter() {
                     <h3 className="font-semibold text-base text-gray-100">{person.name}</h3>
                     <button
                       onClick={() => exportPersonSummary(person.id)}
-                      className="text-indigo-400 hover:text-indigo-300"
+                      className="bg-indigo-600 text-indigo-400 hover:text-indigo-300"
                       title="Copy summary"
                     >
                       <ClipboardCopy size={16} />
