@@ -557,32 +557,6 @@ export default function BillSplitter() {
               })}
             </div>
             
-            <div className="p-4 bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg border-2 border-green-500 max-w-md mx-auto">
-              <div className="space-y-2">
-                <div className="flex justify-between text-lg text-gray-100">
-                  <span className="font-medium">Subtotal:</span>
-                  <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-gray-300">
-                  <span>Tax:</span>
-                  <span className="font-medium">${calculateTaxAmount().toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-gray-300">
-                  <span>Tip:</span>
-                  <span className="font-medium">${calculateTipAmount().toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-2xl font-bold pt-2 border-t-2 border-green-500">
-                  <span className="text-gray-100">Total:</span>
-                  <span className="text-green-400">${grandTotal.toFixed(2)}</span>
-                </div>
-                <button
-                  onClick={exportFullBill}
-                  className="mt-3 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
-                >
-                  <ClipboardCopy size={16} /> Copy Full Bill
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
