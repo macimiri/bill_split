@@ -332,7 +332,7 @@ export default function BillSplitter() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-4">
           <Receipt className='stroke-indigo-600'/>
-          <h1 className="text-xl font-bold text-gray-100">Bill Splitter</h1>
+          <h1 className="text-xl font-bold text-gray-100 mr-32">Bill Splitter</h1>
           <input
             ref={billNameInputRef}
             type="text"
@@ -381,6 +381,7 @@ export default function BillSplitter() {
                   </th>
                 ))}
                 <th className="p-3 text-center bg-gray-900 border-l border-gray-700">
+                  <span className='text-gray-100 mr-1'>Person</span>
                   <button
                     onClick={addPerson}
                     className="bg-blue-600 text-white p-1 rounded hover:bg-blue-700"
@@ -575,7 +576,15 @@ export default function BillSplitter() {
 
           {/* Grand total box */}
           <div className="p-4 bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg shadow-lg border-2 border-green-500">
-            <h2 className="text-lg font-semibold text-gray-100 mb-3">Grand Total</h2>
+            <div className='flex justify-between items-start'>
+              <h2 className="text-lg font-semibold text-gray-100 mb-3">Grand Total</h2>
+                <button
+                  onClick={exportFullBill}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
+                >
+                <ClipboardCopy size={16} />
+              </button>
+            </div>
             <div className="space-y-2">
               <div className="flex justify-between text-base text-gray-100">
                 <span className="font-medium">Subtotal:</span>
@@ -593,12 +602,6 @@ export default function BillSplitter() {
                 <span className="text-gray-100">Total:</span>
                 <span className="text-green-400">${grandTotal.toFixed(2)}</span>
               </div>
-              <button
-                onClick={exportFullBill}
-                className="mt-3 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
-              >
-                <ClipboardCopy size={16} /> Copy Full Bill
-              </button>
             </div>
           </div>
         </div>
