@@ -298,7 +298,7 @@ export default function BillSplitter() {
       `}</style>
       
       {toastMessage && (
-        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-50">
+        <div className="fixed top-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-50">
           {toastMessage}
         </div>
       )}
@@ -433,45 +433,78 @@ export default function BillSplitter() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
-            <label className="block text-sm font-medium mb-2 text-gray-300">Tax</label>
-            <div className="flex gap-2">
-              <select
-                value={taxType}
-                onChange={(e) => setTaxType(e.target.value)}
-                className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
-              >
-                <option value="percentage">%</option>
-                <option value="amount">$</option>
-              </select>
-              <input
-                type="number"
-                value={taxValue}
-                onChange={(e) => setTaxValue(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
-                step="0.01"
-                placeholder={taxType === 'percentage' ? '0.00%' : '$0.00'}
-              />
+            <h2 className="text-lg font-semibold text-gray-100 mb-3">Tax & Tip</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-300">Tax</label>
+                <div className="flex gap-2">
+                  <select
+                    value={taxType}
+                    onChange={(e) => setTaxType(e.target.value)}
+                    className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="percentage">%</option>
+                    <option value="amount">$</option>
+                  </select>
+                  <input
+                    type="number"
+                    value={taxValue}
+                    onChange={(e) => setTaxValue(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
+                    step="0.01"
+                    placeholder={taxType === 'percentage' ? '0.00%' : '$0.00'}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-300">Tip</label>
+                <div className="flex gap-2">
+                  <select
+                    value={tipType}
+                    onChange={(e) => setTipType(e.target.value)}
+                    className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="percentage">%</option>
+                    <option value="amount">$</option>
+                  </select>
+                  <input
+                    type="number"
+                    value={tipValue}
+                    onChange={(e) => setTipValue(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
+                    step="0.01"
+                    placeholder={tipType === 'percentage' ? '0.00%' : '$0.00'}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
-            <label className="block text-sm font-medium mb-2 text-gray-300">Tip</label>
-            <div className="flex gap-2">
-              <select
-                value={tipType}
-                onChange={(e) => setTipType(e.target.value)}
-                className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
+
+          <div className="p-4 bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg shadow-lg border-2 border-green-500">
+            <h2 className="text-lg font-semibold text-gray-100 mb-3">Grand Total</h2>
+            <div className="space-y-2">
+              <div className="flex justify-between text-base text-gray-100">
+                <span className="font-medium">Subtotal:</span>
+                <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-300">
+                <span>Tax:</span>
+                <span className="font-medium">${calculateTaxAmount().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-300">
+                <span>Tip:</span>
+                <span className="font-medium">${calculateTipAmount().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-2xl font-bold pt-2 border-t-2 border-green-500">
+                <span className="text-gray-100">Total:</span>
+                <span className="text-green-400">${grandTotal.toFixed(2)}</span>
+              </div>
+              <button
+                onClick={exportFullBill}
+                className="mt-3 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
               >
-                <option value="percentage">%</option>
-                <option value="amount">$</option>
-              </select>
-              <input
-                type="number"
-                value={tipValue}
-                onChange={(e) => setTipValue(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
-                step="0.01"
-                placeholder={tipType === 'percentage' ? '0.00%' : '$0.00'}
-              />
+                <ClipboardCopy size={16} /> Copy Full Bill
+              </button>
             </div>
           </div>
         </div>
