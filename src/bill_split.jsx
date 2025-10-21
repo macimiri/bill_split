@@ -229,16 +229,13 @@ export default function BillSplitter() {
     const tip = calculateTipAmount() * ratio;
     
     let summary = billName ? `${billName}\n` : '';
-    summary += `Bill Summary for ${person.name}\n`;
-    summary += `${'='.repeat(60)}\n\n`;
+    summary += `${person.name}\n`;
     summary += `Items:\n`;
     itemsList.forEach(item => {
       summary += `  ${item.name} - ${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio}): ${item.amount}\n`;
     });
-    summary += `\nSubtotal: ${subtotal.toFixed(2)}\n`;
     summary += `Tax: ${tax.toFixed(2)}\n`;
     summary += `Tip: ${tip.toFixed(2)}\n`;
-    summary += `${'='.repeat(60)}\n`;
     summary += `Total: ${total.toFixed(2)}\n`;
     
     navigator.clipboard.writeText(summary);
