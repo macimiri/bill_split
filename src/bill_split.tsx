@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Receipt} from 'lucide-react';
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
+import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Users } from 'lucide-react';
 
 export default function BillSplitter() {
   const [persons, setPersons] = useState([
@@ -28,10 +28,10 @@ export default function BillSplitter() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.shiftKey && e.metaKey && e.key === 'P') {
+      if (e.metaKey && e.key === 'p') {
         e.preventDefault();
         addPerson();
-      } else if (e.shiftKey && e.metaKey && e.key === 'I') {
+      } else if (e.metaKey && e.key === 'i') {
         e.preventDefault();
         addItem();
       }
@@ -135,6 +135,19 @@ export default function BillSplitter() {
     } catch (e) {
       // Keep original value if evaluation fails
     }
+  };
+
+  const splitEvenly = (itemId) => {
+    setItems(items.map(item => {
+      if (item.id !== itemId) return item;
+      
+      const splits = persons.map(person => ({
+        personId: person.id,
+        ratio: 1
+      }));
+      
+      return { ...item, splits };
+    }));
   };
 
   const deleteItem = (id) => {
@@ -344,7 +357,7 @@ export default function BillSplitter() {
                     <button
                       onClick={addItem}
                       className="bg-green-600 text-white p-1 rounded hover:bg-green-700"
-                      title="Cmd+Shift+I"
+                      title="Cmd+I"
                     >
                       <Plus size={14} />
                     </button>
@@ -375,7 +388,7 @@ export default function BillSplitter() {
                   <button
                     onClick={addPerson}
                     className="bg-blue-600 text-white p-1 rounded hover:bg-blue-700"
-                    title="Cmd+Shift+P"
+                    title="Cmd+P"
                   >
                     <Plus size={14} />
                   </button>
@@ -395,18 +408,27 @@ export default function BillSplitter() {
                     />
                   </td>
                   <td className="p-2">
-                    <input
-                      type="text"
-                      value={focusedCostField === item.id ? (item.costExpression || item.cost) : item.cost}
-                      onChange={(e) => updateItem(item.id, 'cost', e.target.value)}
-                      onFocus={() => setFocusedCostField(item.id)}
-                      onBlur={(e) => {
-                        setFocusedCostField(null);
-                        evaluateCostExpression(item.id, e.target.value);
-                      }}
-                      className="w-full px-2 py-1 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-green-500 focus:outline-none"
-                      placeholder="e.g. 4+2"
-                    />
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={focusedCostField === item.id ? (item.costExpression || item.cost) : item.cost}
+                        onChange={(e) => updateItem(item.id, 'cost', e.target.value)}
+                        onFocus={() => setFocusedCostField(item.id)}
+                        onBlur={(e) => {
+                          setFocusedCostField(null);
+                          evaluateCostExpression(item.id, e.target.value);
+                        }}
+                        className="flex-1 px-2 py-1 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-green-500 focus:outline-none"
+                        placeholder="e.g. 4+2"
+                      />
+                      <button
+                        onClick={() => splitEvenly(item.id)}
+                        className="px-2 py-1 border border-gray-600 bg-gray-900 text-blue-400 hover:text-blue-300 hover:bg-gray-700 rounded transition-colors"
+                        title="Split evenly among all people"
+                      >
+                        <Users size={16} />
+                      </button>
+                    </div>
                   </td>
                   {persons.map(person => (
                     <td key={person.id} className="p-2 text-center border-l border-gray-700">
@@ -467,12 +489,33 @@ export default function BillSplitter() {
             <div className="space-y-3">
               <div className='mb-4'>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Tax</label>
-                <div className="flex gap-2 text-gray-100 items-center">
-                  <Percent size={18} />
-                  <Switch 
-                    checked={taxType === 'amount'}
-                    onCheckedChange={() => setTaxType(taxType === 'percentage' ? 'amount' : 'percentage')}/>
-                  <DollarSign size={18} className="mr-4"/>
+                <div className="flex gap-2">
+                  <div className="flex border border-gray-600 rounded overflow-hidden">
+                    <button
+                      onClick={() => setTaxType('percentage')}
+                      className={`px-3 py-2 flex items-center gap-1 transition-colors ${
+                        taxType === 'percentage' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-900 text-gray-400 hover:bg-gray-700'
+                      }`}
+                      title="Percentage"
+                    >
+                      <Percent size={16} />
+                      <span className="text-xs">%</span>
+                    </button>
+                    <button
+                      onClick={() => setTaxType('amount')}
+                      className={`px-3 py-2 flex items-center gap-1 transition-colors ${
+                        taxType === 'amount' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-900 text-gray-400 hover:bg-gray-700'
+                      }`}
+                      title="Dollar amount"
+                    >
+                      <DollarSign size={16} />
+                      <span className="text-xs">$</span>
+                    </button>
+                  </div>
                   <input
                     type="number"
                     value={taxValue}
@@ -492,12 +535,33 @@ export default function BillSplitter() {
               <Separator className='bg-gray-600'/>
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Tip</label>
-                <div className="flex gap-2 text-gray-100 items-center">
-                  <Percent size={18} />
-                  <Switch 
-                    checked={tipType === 'amount'}
-                    onCheckedChange={() => setTipType(tipType === 'percentage' ? 'amount' : 'percentage')}/>
-                  <DollarSign size={18} className="mr-4"/>
+                <div className="flex gap-2">
+                  <div className="flex border border-gray-600 rounded overflow-hidden">
+                    <button
+                      onClick={() => setTipType('percentage')}
+                      className={`px-3 py-2 flex items-center gap-1 transition-colors ${
+                        tipType === 'percentage' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-900 text-gray-400 hover:bg-gray-700'
+                      }`}
+                      title="Percentage"
+                    >
+                      <Percent size={16} />
+                      <span className="text-xs">%</span>
+                    </button>
+                    <button
+                      onClick={() => setTipType('amount')}
+                      className={`px-3 py-2 flex items-center gap-1 transition-colors ${
+                        tipType === 'amount' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-900 text-gray-400 hover:bg-gray-700'
+                      }`}
+                      title="Dollar amount"
+                    >
+                      <DollarSign size={16} />
+                      <span className="text-xs">$</span>
+                    </button>
+                  </div>
                   <input
                     type="number"
                     value={tipValue}
