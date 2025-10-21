@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, ClipboardCopy, Percent, DollarSign } from 'lucide-react';
+import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Receipt} from 'lucide-react';
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 
@@ -322,6 +322,7 @@ export default function BillSplitter() {
       
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-4">
+          <Receipt className='stroke-indigo-600'/>
           <h1 className="text-xl font-bold text-gray-100">Bill Splitter</h1>
           <input
             ref={billNameInputRef}
@@ -488,7 +489,7 @@ export default function BillSplitter() {
                   />
                 </div>
               </div>
-              <Separator />
+              <Separator className='bg-gray-600'/>
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Tip</label>
                 <div className="flex gap-2 text-gray-100 items-center">
