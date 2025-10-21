@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, ClipboardCopy, Percent, DollarSign } from 'lucide-react';
 import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
 
 export default function BillSplitter() {
   const [persons, setPersons] = useState([
@@ -8,7 +9,7 @@ export default function BillSplitter() {
   ]);
   const [items, setItems] = useState([]);
   const [billName, setBillName] = useState('');
-  const [taxType, setTaxType] = useState('percentage');
+  const [taxType, setTaxType] = useState('amount');
   const [taxValue, setTaxValue] = useState('');
   const [tipType, setTipType] = useState('percentage');
   const [tipValue, setTipValue] = useState('');
@@ -327,7 +328,7 @@ export default function BillSplitter() {
             type="text"
             value={billName}
             onChange={(e) => setBillName(e.target.value)}
-            placeholder="Enter bill name (optional)"
+            placeholder="[Name]"
             className="flex-1 max-w-md px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
@@ -459,20 +460,18 @@ export default function BillSplitter() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          {/* Tax + Tip box */}
           <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
             <h2 className="text-lg font-semibold text-gray-100 mb-3">Tax & Tip</h2>
             <div className="space-y-3">
-              <div>
+              <div className='mb-4'>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Tax</label>
-                <div className="flex gap-2">
-                  <Switch />
-                  <button
-                    onClick={() => setTaxType(taxType === 'percentage' ? 'amount' : 'percentage')}
-                    className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded hover:bg-gray-700 transition-colors"
-                    title="Toggle tax type"
-                  >
-                    {taxType === 'percentage' ? <Percent size={18} /> : <DollarSign size={18} />}
-                  </button>
+                <div className="flex gap-2 text-gray-100 items-center">
+                  <Percent size={18} />
+                  <Switch 
+                    checked={taxType === 'amount'}
+                    onCheckedChange={() => setTaxType(taxType === 'percentage' ? 'amount' : 'percentage')}/>
+                  <DollarSign size={18} className="mr-4"/>
                   <input
                     type="number"
                     value={taxValue}
@@ -489,16 +488,15 @@ export default function BillSplitter() {
                   />
                 </div>
               </div>
+              <Separator />
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Tip</label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setTipType(tipType === 'percentage' ? 'amount' : 'percentage')}
-                    className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded hover:bg-gray-700 transition-colors"
-                    title="Toggle tip type"
-                  >
-                    {tipType === 'percentage' ? <Percent size={18} /> : <DollarSign size={18} />}
-                  </button>
+                <div className="flex gap-2 text-gray-100 items-center">
+                  <Percent size={18} />
+                  <Switch 
+                    checked={tipType === 'amount'}
+                    onCheckedChange={() => setTipType(tipType === 'percentage' ? 'amount' : 'percentage')}/>
+                  <DollarSign size={18} className="mr-4"/>
                   <input
                     type="number"
                     value={tipValue}
@@ -518,6 +516,7 @@ export default function BillSplitter() {
             </div>
           </div>
 
+          {/* Grand total box */}
           <div className="p-4 bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg shadow-lg border-2 border-green-500">
             <h2 className="text-lg font-semibold text-gray-100 mb-3">Grand Total</h2>
             <div className="space-y-2">

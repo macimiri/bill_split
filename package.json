@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-switch": "^1.2.6",
     "@tailwindcss/vite": "^4.1.15",
     "class-variance-authority": "^0.7.1",
