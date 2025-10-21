@@ -6,14 +6,22 @@ export default function BillSplitter() {
     { id: 1, name: 'Person 1' }
   ]);
   const [items, setItems] = useState([]);
+  const [billName, setBillName] = useState('');
   const [taxType, setTaxType] = useState('percentage');
   const [taxValue, setTaxValue] = useState('');
   const [tipType, setTipType] = useState('percentage');
   const [tipValue, setTipValue] = useState('');
   const [focusedCostField, setFocusedCostField] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const billNameInputRef = useRef(null);
   const personInputRef = useRef(null);
   const itemNameInputRef = useRef(null);
+
+  useEffect(() => {
+    if (billNameInputRef.current) {
+      billNameInputRef.current.focus();
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -220,34 +228,36 @@ export default function BillSplitter() {
     const tax = calculateTaxAmount() * ratio;
     const tip = calculateTipAmount() * ratio;
     
-    let summary = `Bill Summary for ${person.name}\n`;
+    let summary = billName ? `${billName}\n` : '';
+    summary += `Bill Summary for ${person.name}\n`;
     summary += `${'='.repeat(60)}\n\n`;
     summary += `Items:\n`;
     itemsList.forEach(item => {
-      summary += `  ${item.name} - $${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio}): $${item.amount}\n`;
+      summary += `  ${item.name} - ${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio}): ${item.amount}\n`;
     });
-    summary += `\nSubtotal: $${subtotal.toFixed(2)}\n`;
-    summary += `Tax: $${tax.toFixed(2)}\n`;
-    summary += `Tip: $${tip.toFixed(2)}\n`;
+    summary += `\nSubtotal: ${subtotal.toFixed(2)}\n`;
+    summary += `Tax: ${tax.toFixed(2)}\n`;
+    summary += `Tip: ${tip.toFixed(2)}\n`;
     summary += `${'='.repeat(60)}\n`;
-    summary += `Total: $${total.toFixed(2)}\n`;
+    summary += `Total: ${total.toFixed(2)}\n`;
     
     navigator.clipboard.writeText(summary);
     showToast(`${person.name}'s summary copied!`);
   };
 
   const exportFullBill = () => {
-    let summary = `FULL BILL SUMMARY\n`;
+    let summary = billName ? `${billName.toUpperCase()}\n` : '';
+    summary += `FULL BILL SUMMARY\n`;
     summary += `${'='.repeat(60)}\n\n`;
     
     summary += `ITEMS:\n`;
     items.forEach(item => {
-      summary += `${item.name} - $${item.cost.toFixed(2)}\n`;
+      summary += `${item.name} - ${item.cost.toFixed(2)}\n`;
       item.splits.forEach(split => {
         const person = persons.find(p => p.id === split.personId);
         const totalRatio = item.splits.reduce((s, sp) => s + sp.ratio, 0);
         const amount = item.cost * split.ratio / totalRatio;
-        summary += `  ${person.name}: ${split.ratio}/${totalRatio} = $${amount.toFixed(2)}\n`;
+        summary += `  ${person.name}: ${split.ratio}/${totalRatio} = ${amount.toFixed(2)}\n`;
       });
       summary += `\n`;
     });
@@ -264,19 +274,19 @@ export default function BillSplitter() {
       const tip = calculateTipAmount() * ratio;
       
       summary += `${person.name}:\n`;
-      summary += `  Subtotal: $${subtotal.toFixed(2)}\n`;
-      summary += `  Tax: $${tax.toFixed(2)}\n`;
-      summary += `  Tip: $${tip.toFixed(2)}\n`;
-      summary += `  Total: $${total.toFixed(2)}\n\n`;
+      summary += `  Subtotal: ${subtotal.toFixed(2)}\n`;
+      summary += `  Tax: ${tax.toFixed(2)}\n`;
+      summary += `  Tip: ${tip.toFixed(2)}\n`;
+      summary += `  Total: ${total.toFixed(2)}\n\n`;
     });
     
     summary += `${'='.repeat(60)}\n`;
     summary += `BILL TOTALS:\n`;
-    summary += `Subtotal: $${calculateSubtotal().toFixed(2)}\n`;
-    summary += `Tax: $${calculateTaxAmount().toFixed(2)}\n`;
-    summary += `Tip: $${calculateTipAmount().toFixed(2)}\n`;
+    summary += `Subtotal: ${calculateSubtotal().toFixed(2)}\n`;
+    summary += `Tax: ${calculateTaxAmount().toFixed(2)}\n`;
+    summary += `Tip: ${calculateTipAmount().toFixed(2)}\n`;
     summary += `${'='.repeat(60)}\n`;
-    summary += `GRAND TOTAL: $${grandTotal.toFixed(2)}\n`;
+    summary += `GRAND TOTAL: ${grandTotal.toFixed(2)}\n`;
     
     navigator.clipboard.writeText(summary);
     showToast('Full bill summary copied!');
@@ -304,7 +314,17 @@ export default function BillSplitter() {
       )}
       
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-100 mb-4 text-center">Bill Splitter</h1>
+        <div className="flex items-center gap-4 mb-4">
+          <h1 className="text-xl font-bold text-gray-100">Bill Splitter</h1>
+          <input
+            ref={billNameInputRef}
+            type="text"
+            value={billName}
+            onChange={(e) => setBillName(e.target.value)}
+            placeholder="Enter bill name (optional)"
+            className="flex-1 max-w-md px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
         
         <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-x-auto">
           <table className="w-full">
@@ -336,7 +356,7 @@ export default function BillSplitter() {
                       <button
                         onClick={() => deletePerson(person.id)}
                         disabled={persons.length === 1}
-                        className="text-red-400 hover:text-red-300 disabled:text-gray-600 self-center"
+                        className="text-red-400 hover:text-red-300 disabled:text-gray-600 self-center p-1 rounded hover:bg-red-900/30 disabled:hover:bg-transparent transition-colors"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -420,7 +440,7 @@ export default function BillSplitter() {
                   <td className="p-2 text-center border-l border-gray-700">
                     <button
                       onClick={() => deleteItem(item.id)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-400 hover:text-red-300 p-1.5 rounded hover:bg-red-900/30 transition-colors"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -511,52 +531,49 @@ export default function BillSplitter() {
 
         <div className="bg-gray-800 rounded-lg shadow-lg p-4 mt-4 border border-gray-700">
           <h2 className="text-xl font-semibold text-gray-100 mb-3">Summary</h2>
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {persons.map(person => {
-                const subtotal = calculatePersonSubtotal(person.id);
-                const total = calculatePersonTotal(person.id);
-                const ratio = calculateSubtotal() > 0 ? (subtotal / calculateSubtotal()) : 0;
-                
-                return (
-                  <div key={person.id} className="p-3 bg-gradient-to-br from-gray-700 to-gray-600 rounded-lg border border-indigo-500">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <h3 className="font-semibold text-base text-gray-100">{person.name}</h3>
-                      <button
-                        onClick={() => exportPersonSummary(person.id)}
-                        className="text-indigo-400 hover:text-indigo-300"
-                        title="Copy summary"
-                      >
-                        <ClipboardCopy size={16} />
-                      </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {persons.map(person => {
+              const subtotal = calculatePersonSubtotal(person.id);
+              const total = calculatePersonTotal(person.id);
+              const ratio = calculateSubtotal() > 0 ? (subtotal / calculateSubtotal()) : 0;
+              
+              return (
+                <div key={person.id} className="p-3 bg-gradient-to-br from-gray-700 to-gray-600 rounded-lg border border-indigo-500">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h3 className="font-semibold text-base text-gray-100">{person.name}</h3>
+                    <button
+                      onClick={() => exportPersonSummary(person.id)}
+                      className="text-indigo-400 hover:text-indigo-300"
+                      title="Copy summary"
+                    >
+                      <ClipboardCopy size={16} />
+                    </button>
+                  </div>
+                  <div className="space-y-0.5 text-xs">
+                    <div className="flex justify-between text-gray-300">
+                      <span>Subtotal:</span>
+                      <span className="font-medium">${subtotal.toFixed(2)}</span>
                     </div>
-                    <div className="space-y-0.5 text-xs">
-                      <div className="flex justify-between text-gray-300">
-                        <span>Subtotal:</span>
-                        <span className="font-medium">${subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-400">
-                        <span>Ratio:</span>
-                        <span>{(ratio * 100).toFixed(1)}%</span>
-                      </div>
-                      <div className="flex justify-between text-gray-400">
-                        <span>Tax:</span>
-                        <span>${(calculateTaxAmount() * ratio).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-400">
-                        <span>Tip:</span>
-                        <span>${(calculateTipAmount() * ratio).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-base pt-1.5 border-t border-gray-500">
-                        <span className="text-gray-100">Total:</span>
-                        <span className="text-indigo-400">${total.toFixed(2)}</span>
-                      </div>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Ratio:</span>
+                      <span>{(ratio * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Tax:</span>
+                      <span>${(calculateTaxAmount() * ratio).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Tip:</span>
+                      <span>${(calculateTipAmount() * ratio).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-base pt-1.5 border-t border-gray-500">
+                      <span className="text-gray-100">Total:</span>
+                      <span className="text-indigo-400">${total.toFixed(2)}</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-            
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
