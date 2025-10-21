@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, ClipboardCopy } from 'lucide-react';
+import { Plus, Trash2, ClipboardCopy, Percent, DollarSign } from 'lucide-react';
+import { Switch } from "@/components/ui/switch"
 
 export default function BillSplitter() {
   const [persons, setPersons] = useState([
@@ -9,7 +10,7 @@ export default function BillSplitter() {
   const [billName, setBillName] = useState('');
   const [taxType, setTaxType] = useState('percentage');
   const [taxValue, setTaxValue] = useState('');
-  const [tipType, setTipType] = useState('amount');
+  const [tipType, setTipType] = useState('percentage');
   const [tipValue, setTipValue] = useState('');
   const [focusedCostField, setFocusedCostField] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
@@ -20,6 +21,7 @@ export default function BillSplitter() {
   useEffect(() => {
     if (billNameInputRef.current) {
       billNameInputRef.current.focus();
+      billNameInputRef.current.select();
     }
   }, []);
 
@@ -39,6 +41,10 @@ export default function BillSplitter() {
   }, [persons, items]);
 
   useEffect(() => {
+    if (persons.length === 1 && personInputRef.current) {
+      // Don't auto-focus person field on initial load
+      return;
+    }
     if (personInputRef.current) {
       personInputRef.current.focus();
       personInputRef.current.select();
@@ -229,13 +235,16 @@ export default function BillSplitter() {
     const tip = calculateTipAmount() * ratio;
     
     let summary = billName ? `${billName}\n` : '';
-    summary += `${person.name}\n`;
+    summary += `Bill Summary for ${person.name}\n`;
+    summary += `${'='.repeat(60)}\n\n`;
     summary += `Items:\n`;
     itemsList.forEach(item => {
       summary += `  ${item.name} - ${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio}): ${item.amount}\n`;
     });
+    summary += `\nSubtotal: ${subtotal.toFixed(2)}\n`;
     summary += `Tax: ${tax.toFixed(2)}\n`;
     summary += `Tip: ${tip.toFixed(2)}\n`;
+    summary += `${'='.repeat(60)}\n`;
     summary += `Total: ${total.toFixed(2)}\n`;
     
     navigator.clipboard.writeText(summary);
@@ -404,7 +413,8 @@ export default function BillSplitter() {
                         value={getSplitRatio(item.id, person.id) || ''}
                         onChange={(e) => updateSplit(item.id, person.id, e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                          const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'h', 'j', 'k', 'l'];
+                          if (navKeys.includes(e.key)) {
                             e.preventDefault();
                             const currentCell = e.target.closest('td');
                             const currentRow = currentCell.closest('tr');
@@ -413,15 +423,15 @@ export default function BillSplitter() {
                             const currentCellIndex = allCells.indexOf(e.target);
                             const currentRowIndex = allRows.indexOf(currentRow);
                             
-                            if (e.key === 'ArrowRight' && currentCellIndex < allCells.length - 1) {
+                            if ((e.key === 'ArrowRight' || e.key === 'l') && currentCellIndex < allCells.length - 1) {
                               allCells[currentCellIndex + 1].focus();
-                            } else if (e.key === 'ArrowLeft' && currentCellIndex > 0) {
+                            } else if ((e.key === 'ArrowLeft' || e.key === 'h') && currentCellIndex > 0) {
                               allCells[currentCellIndex - 1].focus();
-                            } else if (e.key === 'ArrowDown' && currentRowIndex < allRows.length - 1) {
+                            } else if ((e.key === 'ArrowDown' || e.key === 'j') && currentRowIndex < allRows.length - 1) {
                               const nextRow = allRows[currentRowIndex + 1];
                               const nextCells = Array.from(nextRow.querySelectorAll('input[type="number"]'));
                               if (nextCells[currentCellIndex]) nextCells[currentCellIndex].focus();
-                            } else if (e.key === 'ArrowUp' && currentRowIndex > 0) {
+                            } else if ((e.key === 'ArrowUp' || e.key === 'k') && currentRowIndex > 0) {
                               const prevRow = allRows[currentRowIndex - 1];
                               const prevCells = Array.from(prevRow.querySelectorAll('input[type="number"]'));
                               if (prevCells[currentCellIndex]) prevCells[currentCellIndex].focus();
@@ -455,18 +465,24 @@ export default function BillSplitter() {
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Tax</label>
                 <div className="flex gap-2">
-                  <select
-                    value={taxType}
-                    onChange={(e) => setTaxType(e.target.value)}
-                    className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
+                  <Switch />
+                  <button
+                    onClick={() => setTaxType(taxType === 'percentage' ? 'amount' : 'percentage')}
+                    className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded hover:bg-gray-700 transition-colors"
+                    title="Toggle tax type"
                   >
-                    <option value="percentage">%</option>
-                    <option value="amount">$</option>
-                  </select>
+                    {taxType === 'percentage' ? <Percent size={18} /> : <DollarSign size={18} />}
+                  </button>
                   <input
                     type="number"
                     value={taxValue}
                     onChange={(e) => setTaxValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ') {
+                        e.preventDefault();
+                        setTaxType(taxType === 'percentage' ? 'amount' : 'percentage');
+                      }
+                    }}
                     className="flex-1 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
                     step="0.01"
                     placeholder={taxType === 'percentage' ? '0.00%' : '$0.00'}
@@ -476,18 +492,23 @@ export default function BillSplitter() {
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Tip</label>
                 <div className="flex gap-2">
-                  <select
-                    value={tipType}
-                    onChange={(e) => setTipType(e.target.value)}
-                    className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
+                  <button
+                    onClick={() => setTipType(tipType === 'percentage' ? 'amount' : 'percentage')}
+                    className="px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded hover:bg-gray-700 transition-colors"
+                    title="Toggle tip type"
                   >
-                    <option value="percentage">%</option>
-                    <option value="amount">$</option>
-                  </select>
+                    {tipType === 'percentage' ? <Percent size={18} /> : <DollarSign size={18} />}
+                  </button>
                   <input
                     type="number"
                     value={tipValue}
                     onChange={(e) => setTipValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ') {
+                        e.preventDefault();
+                        setTipType(tipType === 'percentage' ? 'amount' : 'percentage');
+                      }
+                    }}
                     className="flex-1 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
                     step="0.01"
                     placeholder={tipType === 'percentage' ? '0.00%' : '$0.00'}
@@ -498,15 +519,7 @@ export default function BillSplitter() {
           </div>
 
           <div className="p-4 bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg shadow-lg border-2 border-green-500">
-            <div className="flex items-center justify-between mb-1.5">
-              <h2 className="text-lg font-semibold text-gray-100 mb-3">Grand Total</h2>
-              <button
-                onClick={exportFullBill}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
-              >
-                <ClipboardCopy size={16} />
-              </button>
-            </div>
+            <h2 className="text-lg font-semibold text-gray-100 mb-3">Grand Total</h2>
             <div className="space-y-2">
               <div className="flex justify-between text-base text-gray-100">
                 <span className="font-medium">Subtotal:</span>
@@ -524,6 +537,12 @@ export default function BillSplitter() {
                 <span className="text-gray-100">Total:</span>
                 <span className="text-green-400">${grandTotal.toFixed(2)}</span>
               </div>
+              <button
+                onClick={exportFullBill}
+                className="mt-3 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm font-semibold"
+              >
+                <ClipboardCopy size={16} /> Copy Full Bill
+              </button>
             </div>
           </div>
         </div>
@@ -542,7 +561,7 @@ export default function BillSplitter() {
                     <h3 className="font-semibold text-base text-gray-100">{person.name}</h3>
                     <button
                       onClick={() => exportPersonSummary(person.id)}
-                      className="bg-indigo-600 text-indigo-400 hover:text-indigo-300"
+                      className="text-indigo-400 hover:text-indigo-300"
                       title="Copy summary"
                     >
                       <ClipboardCopy size={16} />
