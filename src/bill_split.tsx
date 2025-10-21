@@ -482,10 +482,9 @@ export default function BillSplitter() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {/* Tax + Tip box */}
           <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-100 mb-3">Tax & Tip</h2>
             <div className="space-y-3">
               <div className='mb-4'>
-                <label className="block text-sm font-medium mb-2 text-gray-300">Tax</label>
+                <label className="block text-md font-medium mb-2 text-gray-300">Tax</label>
                 <div className="flex gap-2">
                   <div className="flex border border-gray-600 rounded overflow-hidden">
                     <button
@@ -529,7 +528,7 @@ export default function BillSplitter() {
               </div>
               <Separator className='bg-gray-600'/>
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">Tip</label>
+                <label className="block text-md font-medium mb-2 text-gray-300">Tip</label>
                 <div className="flex gap-2">
                   <div className="flex border border-gray-600 rounded overflow-hidden">
                     <button
