@@ -9,7 +9,7 @@ export default function BillSplitter() {
   const [billName, setBillName] = useState('');
   const [taxType, setTaxType] = useState('percentage');
   const [taxValue, setTaxValue] = useState('');
-  const [tipType, setTipType] = useState('percentage');
+  const [tipType, setTipType] = useState('amount');
   const [tipValue, setTipValue] = useState('');
   const [focusedCostField, setFocusedCostField] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
