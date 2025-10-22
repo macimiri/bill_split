@@ -1,200 +1,82 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FocusEvent, type KeyboardEvent } from 'react';
 import { Separator } from "@/components/ui/separator"
-import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Users, Receipt, Divide } from 'lucide-react';
+import { Plus, Trash2, ClipboardCopy, Percent, DollarSign, Receipt, Divide } from 'lucide-react';
+
+// --- Interface Definitions ---
+
+interface Person {
+  id: number;
+  name: string;
+}
+
+interface Split {
+  personId: number;
+  ratio: number;
+}
+
+interface Item {
+  id: number;
+  name: string;
+  cost: number;
+  costExpression: string; // Used for the input field to show the expression (e.g., "4+2")
+  splits: Split[];
+}
+
+type TaxTipType = 'percentage' | 'amount';
+
+// --- Component ---
 
 export default function BillSplitter() {
-  const [persons, setPersons] = useState([
+  // --- State Hooks ---
+  const [persons, setPersons] = useState<Person[]>([
     { id: 1, name: 'Person 1' }
   ]);
-  const [items, setItems] = useState([]);
-  const [billName, setBillName] = useState('');
-  const [taxType, setTaxType] = useState('amount');
-  const [taxValue, setTaxValue] = useState('');
-  const [tipType, setTipType] = useState('percentage');
-  const [tipValue, setTipValue] = useState('');
-  const [focusedCostField, setFocusedCostField] = useState(null);
-  const [toastMessage, setToastMessage] = useState('');
-  const billNameInputRef = useRef(null);
-  const personInputRef = useRef(null);
-  const itemNameInputRef = useRef(null);
+  const [items, setItems] = useState<Item[]>([]);
+  const [billName, setBillName] = useState<string>('');
+  const [taxType, setTaxType] = useState<TaxTipType>('amount');
+  const [taxValue, setTaxValue] = useState<string>('');
+  const [tipType, setTipType] = useState<TaxTipType>('percentage');
+  const [tipValue, setTipValue] = useState<string>('');
+  const [focusedCostField, setFocusedCostField] = useState<number | null>(null);
+  const [toastMessage, setToastMessage] = useState<string>('');
 
-  useEffect(() => {
-    if (billNameInputRef.current) {
-      billNameInputRef.current.focus();
-      billNameInputRef.current.select();
-    }
-  }, []);
+  // --- Ref Hooks ---
+  const billNameInputRef = useRef<HTMLInputElement>(null);
+  const personInputRef = useRef<HTMLInputElement>(null);
+  const itemNameInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.metaKey && e.key === 'p') {
-        e.preventDefault();
-        addPerson();
-      } else if (e.metaKey && e.key === 'i') {
-        e.preventDefault();
-        addItem();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [persons, items]);
-
-  useEffect(() => {
-    if (persons.length === 1 && personInputRef.current) {
-      // Don't auto-focus person field on initial load
-      return;
-    }
-    if (personInputRef.current) {
-      personInputRef.current.focus();
-      personInputRef.current.select();
-    }
-  }, [persons.length]);
-
-  useEffect(() => {
-    if (itemNameInputRef.current) {
-      itemNameInputRef.current.focus();
-      itemNameInputRef.current.select();
-    }
-  }, [items.length]);
-
-  const showToast = (message) => {
+  // --- Utility Functions ---
+  const showToast = useCallback((message: string): void => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(''), 3000);
-  };
+  }, []);
 
-  const addPerson = () => {
-    const newPerson = { 
-      id: Date.now(), 
-      name: `Person ${persons.length + 1}` 
-    };
-    setPersons([...persons, newPerson]);
-  };
+  // --- Calculation Functions ---
+  const calculateSubtotal = useCallback((): number => {
+    return items.reduce((sum, item) => sum + (item.cost ?? '0'), 0);
+  }, [items]);
 
-  const updatePerson = (id, name) => {
-    setPersons(persons.map(p => p.id === id ? { ...p, name } : p));
-  };
-
-  const deletePerson = (id) => {
-    if (persons.length === 1) return;
-    setPersons(persons.filter(p => p.id !== id));
-    setItems(items.map(item => ({
-      ...item,
-      splits: item.splits.filter(s => s.personId !== id)
-    })));
-  };
-
-  const addItem = () => {
-    const newItem = {
-      id: Date.now(),
-      name: 'New Item',
-      cost: 0,
-      costExpression: '0',
-      splits: []
-    };
-    setItems([...items, newItem]);
-  };
-
-  const updateItem = (id, field, value) => {
-    if (field === 'cost') {
-      setItems(items.map(item => 
-        item.id === id ? { ...item, costExpression: value, cost: item.cost } : item
-      ));
-    } else {
-      setItems(items.map(item => 
-        item.id === id ? { ...item, [field]: value } : item
-      ));
-    }
-  };
-
-  const evaluateCostExpression = (id, expression) => {
-    try {
-      const cleanValue = expression.replace(/\s/g, '');
-      const operators = /[\+\-\*\/]/;
-      const validChars = /^[\d\.\+\-\*\/\(\)]+$/;
-      
-      if (operators.test(cleanValue)) {
-        if (validChars.test(cleanValue)) {
-          const result = Function('"use strict"; return (' + cleanValue + ')')();
-          if (!isNaN(result) && isFinite(result)) {
-            setItems(items.map(item => 
-              item.id === id ? { ...item, cost: result, costExpression: expression } : item
-            ));
-            return;
-          }
-        }
-      }
-      
-      const numValue = parseFloat(expression);
-      if (!isNaN(numValue)) {
-        setItems(items.map(item => 
-          item.id === id ? { ...item, cost: numValue, costExpression: expression } : item
-        ));
-      }
-    } catch (e) {
-      // Keep original value if evaluation fails
-    }
-  };
-
-  const splitEvenly = (itemId) => {
-    setItems(items.map(item => {
-      if (item.id !== itemId) return item;
-      
-      const splits = persons.map(person => ({
-        personId: person.id,
-        ratio: 1
-      }));
-      
-      return { ...item, splits };
-    }));
-  };
-
-  const deleteItem = (id) => {
-    setItems(items.filter(item => item.id !== id));
-  };
-
-  const updateSplit = (itemId, personId, ratio) => {
-    setItems(items.map(item => {
-      if (item.id !== itemId) return item;
-      
-      const splits = item.splits.filter(s => s.personId !== personId);
-      if (ratio > 0) {
-        splits.push({ personId, ratio: parseFloat(ratio) });
-      }
-      
-      return { ...item, splits };
-    }));
-  };
-
-  const getSplitRatio = (itemId, personId) => {
-    const item = items.find(i => i.id === itemId);
-    const split = item?.splits.find(s => s.personId === personId);
-    return split?.ratio || 0;
-  };
-
-  const calculateSubtotal = () => {
-    return items.reduce((sum, item) => sum + parseFloat(item.cost || 0), 0);
-  };
-
-  const calculateTaxAmount = () => {
+  const calculateTaxAmount = useCallback((): number => {
     const subtotal = calculateSubtotal();
     const taxVal = parseFloat(taxValue) || 0;
     if (taxType === 'percentage') {
       return subtotal * (taxVal / 100);
     }
     return taxVal;
-  };
+  }, [calculateSubtotal, taxType, taxValue]);
 
-  const calculateTipAmount = () => {
+  const calculateTipAmount = useCallback((): number => {
     const subtotal = calculateSubtotal();
     const tipVal = parseFloat(tipValue) || 0;
     if (tipType === 'percentage') {
       return subtotal * (tipVal / 100);
     }
     return tipVal;
-  };
+  }, [calculateSubtotal, tipType, tipValue]);
 
-  const calculatePersonSubtotal = (personId) => {
+  const grandTotal = calculateSubtotal() + calculateTaxAmount() + calculateTipAmount();
+  
+  const calculatePersonSubtotal = useCallback((personId: number): number => {
     return items.reduce((sum, item) => {
       const totalRatio = item.splits.reduce((s, split) => s + split.ratio, 0);
       if (totalRatio === 0) return sum;
@@ -204,9 +86,9 @@ export default function BillSplitter() {
       
       return sum + (item.cost * split.ratio / totalRatio);
     }, 0);
-  };
+  }, [items]);
 
-  const calculatePersonTotal = (personId) => {
+  const calculatePersonTotal = useCallback((personId: number): number => {
     const subtotal = calculateSubtotal();
     const personSubtotal = calculatePersonSubtotal(personId);
     
@@ -217,14 +99,14 @@ export default function BillSplitter() {
     const tip = calculateTipAmount() * ratio;
     
     return personSubtotal + tax + tip;
-  };
-
-  const getPersonItems = (personId) => {
+  }, [calculateSubtotal, calculatePersonSubtotal, calculateTaxAmount, calculateTipAmount]);
+  
+  const getPersonItems = useCallback((personId: number): { name: string, totalCost: number, ratio: number, totalRatio: number, amount: string }[] => {
     return items.filter(item => 
       item.splits.some(s => s.personId === personId)
     ).map(item => {
       const totalRatio = item.splits.reduce((s, split) => s + split.ratio, 0);
-      const split = item.splits.find(s => s.personId === personId);
+      const split = item.splits.find(s => s.personId === personId)!; // '!' asserts that split is not null/undefined
       const amount = item.cost * split.ratio / totalRatio;
       
       return {
@@ -235,10 +117,138 @@ export default function BillSplitter() {
         amount: amount.toFixed(2)
       };
     });
-  };
+  }, [items]);
 
-  const exportPersonSummary = (personId) => {
+  // --- CRUD/Logic Functions ---
+
+  const addPerson = useCallback((): void => {
+    const newPerson: Person = { 
+      id: Date.now(), 
+      name: `Person ${persons.length + 1}` 
+    };
+    setPersons(p => [...p, newPerson]);
+  }, [persons.length]);
+
+  const updatePerson = useCallback((id: number, name: string): void => {
+    setPersons(p => p.map(person => person.id === id ? { ...person, name } : person));
+  }, []);
+
+  const deletePerson = useCallback((id: number): void => {
+    if (persons.length === 1) return;
+    setPersons(p => p.filter(person => person.id !== id));
+    setItems(i => i.map(item => ({
+      ...item,
+      splits: item.splits.filter(s => s.personId !== id)
+    })));
+  }, [persons.length]);
+
+  const addItem = useCallback((): void => {
+    const newItem: Item = {
+      id: Date.now(),
+      name: 'New Item',
+      cost: 0,
+      costExpression: '0',
+      splits: []
+    };
+    setItems(i => [...i, newItem]);
+  }, []);
+
+  const updateItem = useCallback((id: number, field: keyof Item | 'costExpression', value: string): void => {
+    if (field === 'costExpression') {
+      setItems(i => i.map(item => 
+        item.id === id ? { ...item, costExpression: value } : item
+      ));
+    } else if (field === 'name') {
+      setItems(i => i.map(item => 
+        item.id === id ? { ...item, name: value } : item
+      ));
+    }
+  }, []);
+
+  const evaluateCostExpression = useCallback((id: number, expression: string): void => {
+    try {
+      const cleanValue = expression.replace(/\s/g, '');
+      const operators = /[\+\-\*\/]/;
+      const validChars = /^[\d\.\+\-\*\/\(\)]+$/;
+      
+      let result: number | undefined = undefined;
+
+      if (operators.test(cleanValue) && validChars.test(cleanValue)) {
+        // Use Function constructor for calculation (safer than eval)
+        result = Function('"use strict"; return (' + cleanValue + ')')();
+      }
+      
+      if (result !== undefined && !isNaN(result) && isFinite(result)) {
+        setItems(i => i.map(item => 
+          item.id === id ? { ...item, cost: result!, costExpression: expression } : item
+        ));
+        return;
+      }
+      
+      const numValue = parseFloat(expression);
+      if (!isNaN(numValue)) {
+        setItems(i => i.map(item => 
+          item.id === id ? { ...item, cost: numValue, costExpression: expression } : item
+        ));
+      } else {
+        // Fallback: If evaluation or float parsing fails, keep the original cost but update the expression
+        setItems(i => i.map(item => 
+          item.id === id ? { ...item, costExpression: expression } : item
+        ));
+      }
+    } catch (e) {
+      // Keep original cost and update expression to what was typed if evaluation fails
+      setItems(i => i.map(item => 
+        item.id === id ? { ...item, costExpression: expression } : item
+      ));
+    }
+  }, []);
+
+  const splitEvenly = useCallback((itemId: number): void => {
+    setItems(i => i.map(item => {
+      if (item.id !== itemId) return item;
+      
+      const splits: Split[] = persons.map(person => ({
+        personId: person.id,
+        ratio: 1
+      }));
+      
+      return { ...item, splits };
+    }));
+  }, [persons]);
+
+  const deleteItem = useCallback((id: number): void => {
+    setItems(i => i.filter(item => item.id !== id));
+  }, []);
+
+  const updateSplit = useCallback((itemId: number, personId: number, ratioStr: string): void => {
+    const ratio = parseFloat(ratioStr);
+
+    setItems(i => i.map(item => {
+      if (item.id !== itemId) return item;
+      
+      let splits: Split[] = item.splits.filter(s => s.personId !== personId);
+      
+      if (ratio > 0) {
+        splits = [...splits, { personId, ratio }];
+      }
+      
+      return { ...item, splits };
+    }));
+  }, []);
+
+  const getSplitRatio = useCallback((itemId: number, personId: number): number => {
+    const item = items.find(i => i.id === itemId);
+    const split = item?.splits.find(s => s.personId === personId);
+    return split?.ratio || 0;
+  }, [items]);
+  
+  // --- Export Functions ---
+  
+  const exportPersonSummary = useCallback((personId: number): void => {
     const person = persons.find(p => p.id === personId);
+    if (!person) return;
+    
     const itemsList = getPersonItems(personId);
     const subtotal = calculatePersonSubtotal(personId);
     const total = calculatePersonTotal(personId);
@@ -249,36 +259,39 @@ export default function BillSplitter() {
     
     let summary = billName ? `${billName}\n` : '';
     summary += `${person.name}\n`;
-    summary += `Items:\n`;
+    summary += `Items (${itemsList.length}):\n`;
     itemsList.forEach(item => {
-      summary += `  ${item.name} - ${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio}): ${item.amount}\n`;
+      summary += `  ${item.name} - $${item.totalCost.toFixed(2)} (${item.ratio}/${item.totalRatio} split): $${item.amount}\n`;
     });
-    summary += `Tax: ${tax.toFixed(2)}\n`;
-    summary += `Tip: ${tip.toFixed(2)}\n`;
-    summary += `Total: ${total.toFixed(2)}\n`;
+    summary += `-------------------\n`;
+    summary += `Subtotal: $${subtotal.toFixed(2)}\n`;
+    summary += `Tax: $${tax.toFixed(2)}\n`;
+    summary += `Tip: $${tip.toFixed(2)}\n`;
+    summary += `Total: $${total.toFixed(2)}\n`;
     
     navigator.clipboard.writeText(summary);
     showToast(`${person.name}'s summary copied!`);
-  };
+  }, [persons, billName, getPersonItems, calculatePersonSubtotal, calculatePersonTotal, calculateSubtotal, calculateTaxAmount, calculateTipAmount, showToast]);
 
-  const exportFullBill = () => {
+  const exportFullBill = useCallback((): void => {
     let summary = billName ? `${billName.toUpperCase()}\n` : '';
     summary += `FULL BILL SUMMARY\n`;
-    summary += `${'='.repeat(60)}\n\n`;
+    summary += `${'='.repeat(35)}\n\n`;
     
-    summary += `ITEMS:\n`;
+    summary += `ITEMS BREAKDOWN:\n`;
     items.forEach(item => {
-      summary += `${item.name} - ${item.cost.toFixed(2)}\n`;
+      summary += `* ${item.name} - $${item.cost.toFixed(2)}\n`;
       item.splits.forEach(split => {
         const person = persons.find(p => p.id === split.personId);
+        if (!person) return;
         const totalRatio = item.splits.reduce((s, sp) => s + sp.ratio, 0);
-        const amount = item.cost * split.ratio / totalRatio;
-        summary += `  ${person.name}: ${split.ratio}/${totalRatio} = ${amount.toFixed(2)}\n`;
+        const amount = totalRatio > 0 ? (item.cost * split.ratio / totalRatio) : 0;
+        summary += `  -> ${person.name}: ${split.ratio}/${totalRatio} ratio = $${amount.toFixed(2)}\n`;
       });
       summary += `\n`;
     });
     
-    summary += `${'='.repeat(60)}\n`;
+    summary += `${'='.repeat(35)}\n`;
     summary += `BREAKDOWN BY PERSON:\n\n`;
     
     persons.forEach(person => {
@@ -290,25 +303,101 @@ export default function BillSplitter() {
       const tip = calculateTipAmount() * ratio;
       
       summary += `${person.name}:\n`;
-      summary += `  Subtotal: ${subtotal.toFixed(2)}\n`;
-      summary += `  Tax: ${tax.toFixed(2)}\n`;
-      summary += `  Tip: ${tip.toFixed(2)}\n`;
-      summary += `  Total: ${total.toFixed(2)}\n\n`;
+      summary += `  Subtotal: $${subtotal.toFixed(2)}\n`;
+      summary += `  Tax: $${tax.toFixed(2)}\n`;
+      summary += `  Tip: $${tip.toFixed(2)}\n`;
+      summary += `  Total DUE: $${total.toFixed(2)}\n\n`;
     });
     
-    summary += `${'='.repeat(60)}\n`;
+    summary += `${'='.repeat(35)}\n`;
     summary += `BILL TOTALS:\n`;
-    summary += `Subtotal: ${calculateSubtotal().toFixed(2)}\n`;
-    summary += `Tax: ${calculateTaxAmount().toFixed(2)}\n`;
-    summary += `Tip: ${calculateTipAmount().toFixed(2)}\n`;
-    summary += `${'='.repeat(60)}\n`;
-    summary += `GRAND TOTAL: ${grandTotal.toFixed(2)}\n`;
+    summary += `Subtotal: $${calculateSubtotal().toFixed(2)}\n`;
+    summary += `Tax: $${calculateTaxAmount().toFixed(2)}\n`;
+    summary += `Tip: $${calculateTipAmount().toFixed(2)}\n`;
+    summary += `GRAND TOTAL: $${grandTotal.toFixed(2)}\n`;
+    summary += `${'='.repeat(35)}\n`;
     
     navigator.clipboard.writeText(summary);
     showToast('Full bill summary copied!');
+  }, [items, persons, billName, calculatePersonSubtotal, calculatePersonTotal, calculateSubtotal, calculateTaxAmount, calculateTipAmount, grandTotal, showToast]);
+  
+  // --- Effects ---
+
+  useEffect(() => {
+    if (billNameInputRef.current) {
+      billNameInputRef.current.focus();
+      billNameInputRef.current.select();
+    }
+  }, []); // Initial focus on bill name
+
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.metaKey && e.key === 'p') {
+        e.preventDefault();
+        addPerson();
+      } else if (e.metaKey && e.key === 'i') {
+        e.preventDefault();
+        addItem();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [addPerson, addItem]); // Add/Item shortcuts
+
+  useEffect(() => {
+    if (persons.length > 1 && personInputRef.current) {
+      personInputRef.current.focus();
+      personInputRef.current.select();
+    }
+  }, [persons.length]); // Focus on new person
+
+  useEffect(() => {
+    if (items.length > 0 && itemNameInputRef.current) {
+      itemNameInputRef.current.focus();
+      itemNameInputRef.current.select();
+    }
+  }, [items.length]); // Focus on new item
+
+  // Handler for split ratio input keyboard navigation
+  const handleSplitKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
+    const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'h', 'j', 'k', 'l'];
+    if (navKeys.includes(e.key)) {
+      e.preventDefault();
+      const currentCell = e.currentTarget.closest('td');
+      if (!currentCell) return;
+
+      const currentRow = currentCell.closest('tr');
+      if (!currentRow) return;
+
+      // Get all split ratio inputs in the current row
+      const allCells = Array.from(currentRow.querySelectorAll<HTMLInputElement>('input[type="number"]'));
+      const currentCellIndex = allCells.indexOf(e.currentTarget);
+
+      // Get all table body rows
+      const tbody = currentRow.parentElement;
+      if (!tbody) return;
+      const allRows = Array.from(tbody.querySelectorAll('tr'));
+      const currentRowIndex = allRows.indexOf(currentRow);
+      
+      if ((e.key === 'ArrowRight' || e.key === 'l') && currentCellIndex < allCells.length - 1) {
+        allCells[currentCellIndex + 1].focus();
+      } else if ((e.key === 'ArrowLeft' || e.key === 'h') && currentCellIndex > 0) {
+        allCells[currentCellIndex - 1].focus();
+      } else if ((e.key === 'ArrowDown' || e.key === 'j') && currentRowIndex < allRows.length - 1) {
+        const nextRow = allRows[currentRowIndex + 1];
+        const nextCells = Array.from(nextRow.querySelectorAll<HTMLInputElement>('input[type="number"]'));
+        if (nextCells[currentCellIndex]) nextCells[currentCellIndex].focus();
+      } else if ((e.key === 'ArrowUp' || e.key === 'k') && currentRowIndex > 0) {
+        const prevRow = allRows[currentRowIndex - 1];
+        const prevCells = Array.from(prevRow.querySelectorAll<HTMLInputElement>('input[type="number"]'));
+        if (prevCells[currentCellIndex]) prevCells[currentCellIndex].focus();
+      }
+    }
   };
 
-  const grandTotal = calculateSubtotal() + calculateTaxAmount() + calculateTipAmount();
+
+  // --- Render ---
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-3">
@@ -337,7 +426,7 @@ export default function BillSplitter() {
             ref={billNameInputRef}
             type="text"
             value={billName}
-            onChange={(e) => setBillName(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setBillName(e.target.value)}
             placeholder="[Name]"
             className="flex-1 max-w-md px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded text-sm focus:border-blue-500 focus:outline-none"
           />
@@ -347,7 +436,7 @@ export default function BillSplitter() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700">
-                <th className="p-3 text-left text-gray-100 font-semibold bg-gray-900">
+                <th className="p-3 text-left text-gray-100 font-semibold bg-gray-900 min-w-[200px]">
                   <div className="flex items-center gap-2">
                     <span>Item</span>
                     <button
@@ -359,15 +448,15 @@ export default function BillSplitter() {
                     </button>
                   </div>
                 </th>
-                <th className="p-3 text-left text-gray-100 font-semibold bg-gray-900 w-24">Cost</th>
+                <th className="p-3 text-left text-gray-100 font-semibold bg-gray-900 w-24 min-w-[120px]">Cost</th>
                 {persons.map((person, index) => (
-                  <th key={person.id} className="p-3 text-center bg-gray-900 border-l border-gray-700">
+                  <th key={person.id} className="p-3 text-center bg-gray-900 border-l border-gray-700 min-w-[100px]">
                     <div className="flex flex-col gap-1">
                       <input
                         ref={index === persons.length - 1 ? personInputRef : null}
                         type="text"
                         value={person.name}
-                        onChange={(e) => updatePerson(person.id, e.target.value)}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => updatePerson(person.id, e.target.value)}
                         className="w-full px-2 py-1 border border-gray-600 bg-gray-800 text-gray-100 rounded text-sm text-center focus:border-blue-500 focus:outline-none"
                       />
                       <button
@@ -380,7 +469,7 @@ export default function BillSplitter() {
                     </div>
                   </th>
                 ))}
-                <th className="p-3 text-center bg-gray-900 border-l border-gray-700">
+                <th className="p-3 text-center bg-gray-900 border-l border-gray-700 min-w-[80px]">
                   <span className='text-gray-100 mr-1'>Person</span>
                   <button
                     onClick={addPerson}
@@ -400,7 +489,7 @@ export default function BillSplitter() {
                       ref={itemIndex === items.length - 1 ? itemNameInputRef : null}
                       type="text"
                       value={item.name}
-                      onChange={(e) => updateItem(item.id, 'name', e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => updateItem(item.id, 'name', e.target.value)}
                       className="w-full px-2 py-1 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm focus:border-green-500 focus:outline-none"
                     />
                   </td>
@@ -408,10 +497,10 @@ export default function BillSplitter() {
                     <div className="flex gap-1">
                       <input
                         type="text"
-                        value={focusedCostField === item.id ? (item.costExpression || item.cost) : item.cost}
-                        onChange={(e) => updateItem(item.id, 'cost', e.target.value)}
+                        value={focusedCostField === item.id ? (item.costExpression || item.cost.toString()) : item.cost.toFixed(2)}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => updateItem(item.id, 'costExpression', e.target.value)}
                         onFocus={() => setFocusedCostField(item.id)}
-                        onBlur={(e) => {
+                        onBlur={(e: FocusEvent<HTMLInputElement>) => {
                           setFocusedCostField(null);
                           evaluateCostExpression(item.id, e.target.value);
                         }}
@@ -432,33 +521,8 @@ export default function BillSplitter() {
                       <input
                         type="number"
                         value={getSplitRatio(item.id, person.id) || ''}
-                        onChange={(e) => updateSplit(item.id, person.id, e.target.value)}
-                        onKeyDown={(e) => {
-                          const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'h', 'j', 'k', 'l'];
-                          if (navKeys.includes(e.key)) {
-                            e.preventDefault();
-                            const currentCell = e.target.closest('td');
-                            const currentRow = currentCell.closest('tr');
-                            const allCells = Array.from(currentRow.querySelectorAll('input[type="number"]'));
-                            const allRows = Array.from(currentRow.parentElement.querySelectorAll('tr'));
-                            const currentCellIndex = allCells.indexOf(e.target);
-                            const currentRowIndex = allRows.indexOf(currentRow);
-                            
-                            if ((e.key === 'ArrowRight' || e.key === 'l') && currentCellIndex < allCells.length - 1) {
-                              allCells[currentCellIndex + 1].focus();
-                            } else if ((e.key === 'ArrowLeft' || e.key === 'h') && currentCellIndex > 0) {
-                              allCells[currentCellIndex - 1].focus();
-                            } else if ((e.key === 'ArrowDown' || e.key === 'j') && currentRowIndex < allRows.length - 1) {
-                              const nextRow = allRows[currentRowIndex + 1];
-                              const nextCells = Array.from(nextRow.querySelectorAll('input[type="number"]'));
-                              if (nextCells[currentCellIndex]) nextCells[currentCellIndex].focus();
-                            } else if ((e.key === 'ArrowUp' || e.key === 'k') && currentRowIndex > 0) {
-                              const prevRow = allRows[currentRowIndex - 1];
-                              const prevCells = Array.from(prevRow.querySelectorAll('input[type="number"]'));
-                              if (prevCells[currentCellIndex]) prevCells[currentCellIndex].focus();
-                            }
-                          }
-                        }}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => updateSplit(item.id, person.id, e.target.value)}
+                        onKeyDown={handleSplitKeyDown}
                         className="w-16 px-2 py-1 border border-gray-600 bg-gray-900 text-gray-100 rounded text-sm text-center focus:border-blue-500 focus:outline-none mx-auto"
                         step="0.1"
                         min="0"
@@ -513,8 +577,8 @@ export default function BillSplitter() {
                   <input
                     type="number"
                     value={taxValue}
-                    onChange={(e) => setTaxValue(e.target.value)}
-                    onKeyDown={(e) => {
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setTaxValue(e.target.value)}
+                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                       if (e.key === ' ') {
                         e.preventDefault();
                         setTaxType(taxType === 'percentage' ? 'amount' : 'percentage');
@@ -557,8 +621,8 @@ export default function BillSplitter() {
                   <input
                     type="number"
                     value={tipValue}
-                    onChange={(e) => setTipValue(e.target.value)}
-                    onKeyDown={(e) => {
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setTipValue(e.target.value)}
+                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                       if (e.key === ' ') {
                         e.preventDefault();
                         setTipType(tipType === 'percentage' ? 'amount' : 'percentage');
@@ -611,7 +675,8 @@ export default function BillSplitter() {
             {persons.map(person => {
               const subtotal = calculatePersonSubtotal(person.id);
               const total = calculatePersonTotal(person.id);
-              const ratio = calculateSubtotal() > 0 ? (subtotal / calculateSubtotal()) : 0;
+              const subtotalTotal = calculateSubtotal();
+              const ratio = subtotalTotal > 0 ? (subtotal / subtotalTotal) : 0;
               
               return (
                 <div key={person.id} className="p-3 bg-gradient-to-br from-gray-700 to-gray-600 rounded-lg border border-indigo-500">
